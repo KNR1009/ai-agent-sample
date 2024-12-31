@@ -8,29 +8,33 @@ type Message = {
   content: string;
 };
 
+const initialMessage: Message = {
+  role: 'system',
+  content: 'You are a helpful assistant.'
+};
+
 // 会話履歴の保存
 const saveMessages = (messages: Message[]) => {
-  localStorage.setItem('chatHistory', JSON.stringify(messages));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('chatHistory', JSON.stringify(messages));
+  }
 };
 
-// 会話履歴の読み込み
-const loadMessages = (): Message[] => {
-  if (typeof window === 'undefined') return [
-    { role: 'system', content: 'You are a helpful assistant.' }
-  ];
-
-  const saved = localStorage.getItem('chatHistory');
-  return saved ? JSON.parse(saved) : [
-    { role: 'system', content: 'You are a helpful assistant.' }
-  ];
-};
 
 export default function Home() {
   const [response, setResponse] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<Message[]>(loadMessages());
+  const [messages, setMessages] = useState<Message[]>([initialMessage]);
+
+  // クライアントサイドでのみローカルストレージから履歴を読み込む
+  useEffect(() => {
+    const saved = localStorage.getItem('chatHistory');
+    if (saved) {
+      setMessages(JSON.parse(saved));
+    }
+  }, []);
 
   // メッセージ更新時に保存
   useEffect(() => {
