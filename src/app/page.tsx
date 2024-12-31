@@ -50,7 +50,6 @@ export default function Home() {
     const newUserMessage: Message = { role: 'user', content: question };
     const currentMessages = [...messages, newUserMessage];
 
-    console.log(currentMessages)
 
     try {
       const res = await fetch('/api/chat', {
