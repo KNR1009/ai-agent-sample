@@ -25,11 +25,13 @@ export default function LangChainMemoryDemo() {
     setIsLoading(true);
     setError('');
 
+
     try {
       // 新しいメッセージを追加
       const newMessage: Message = { role: 'user', content: message };
       setMessages(prev => [...prev, newMessage]);
       setMessage('');
+
 
       const res = await fetch('/api/memory', {
         method: 'POST',

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     // ChatGPTモデルの初期化
     const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
-      modelName: "gpt-4",
+      modelName: "gpt-4o-mini",
       temperature: 0.7,
     });
 
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
 アシスタント: `),
     });
 
-    // チェーンを実行して応答を取得
+
+    // チェーン実行して応答を取得
     const response = await chain.call({
       input: message,
     });
