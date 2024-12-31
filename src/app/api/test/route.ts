@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const chatPrompt = ChatPromptTemplate.fromMessages([
       ["system", systemTemplate],
-      ...messages.map((m: any) => [m.role, m.content]),
+      ["human", messages[0].content],
     ]);
 
     // チェーンの作成
@@ -38,14 +38,24 @@ export async function POST(request: Request) {
     // 応答の生成
     const response = await chain.invoke({});
 
-    return NextResponse.json({
+    // タイムスタンプを追加
+    const responseData = {
+      timestamp: new Date().toISOString(),
+      model: "gpt-4",
       choices: [{
         message: {
           content: response,
           role: "assistant"
         }
-      }]
-    });
+      }],
+      usage: {
+        prompt_tokens: messages[0].content.length,
+        completion_tokens: response.length,
+        total_tokens: messages[0].content.length + response.length
+      }
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(

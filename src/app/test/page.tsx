@@ -2,46 +2,43 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
-type Message = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-};
-
-const initialMessage: Message = {
-  role: 'system',
-  content: 'あなたは親切なアシスタントです。'
+type ResponseData = {
+  choices: {
+    message: {
+      content: string;
+      role: string;
+    };
+  }[];
 };
 
 export default function TestChat() {
-  const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [input, setInput] = useState('');
+  const [response, setResponse] = useState<ResponseData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
     setIsLoading(true);
+    setResponse(null);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: input }
+          ]
+        }),
       });
 
       if (!res.ok) throw new Error('API request failed');
 
       const data = await res.json();
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.choices[0].message.content,
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
+      setResponse(data);
+      setInput('');
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -52,21 +49,6 @@ export default function TestChat() {
   return (
     <div className="max-w-3xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">LangChain チャット</h1>
-
-      <div className="mb-4 space-y-4">
-        {messages.slice(1).map((message, i) => (
-          <div
-            key={i}
-            className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'
-              }`}
-          >
-            <div className="font-bold mb-2">
-              {message.role === 'user' ? 'あなた' : 'アシスタント'}
-            </div>
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
-        ))}
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <textarea
@@ -88,6 +70,32 @@ export default function TestChat() {
           {isLoading ? '送信中...' : '送信'}
         </button>
       </form>
+
+      {isLoading && (
+        <div className="mt-4 p-4 bg-gray-50 rounded animate-pulse">
+          回答を生成しています...
+        </div>
+      )}
+
+      {response && (
+        <div className="space-y-6 mt-4">
+          {/* フォーマットされた回答 */}
+          <div className="p-4 bg-gray-100 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2">フォーマットされた回答:</h2>
+            <div className="prose max-w-none">
+              <ReactMarkdown>{response.choices[0].message.content}</ReactMarkdown>
+            </div>
+          </div>
+
+          {/* 生のJSONデータ */}
+          <div className="p-4 bg-gray-800 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2 text-white">レスポンスの生データ:</h2>
+            <pre className="overflow-auto p-2 bg-gray-900 rounded text-green-400 text-sm">
+              {JSON.stringify(response, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
