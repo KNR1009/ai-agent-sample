@@ -1,12 +1,41 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+
+// メッセージの型定義
+type Message = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+// 会話履歴の保存
+const saveMessages = (messages: Message[]) => {
+  localStorage.setItem('chatHistory', JSON.stringify(messages));
+};
+
+// 会話履歴の読み込み
+const loadMessages = (): Message[] => {
+  if (typeof window === 'undefined') return [
+    { role: 'system', content: 'You are a helpful assistant.' }
+  ];
+
+  const saved = localStorage.getItem('chatHistory');
+  return saved ? JSON.parse(saved) : [
+    { role: 'system', content: 'You are a helpful assistant.' }
+  ];
+};
 
 export default function Home() {
   const [response, setResponse] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [question, setQuestion] = useState('');
+  const [messages, setMessages] = useState<Message[]>(loadMessages());
+
+  // メッセージ更新時に保存
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
 
   const handleChat = async () => {
     if (!question.trim()) {
@@ -18,13 +47,18 @@ export default function Home() {
     setError('');
     setResponse('');
 
+    const newUserMessage: Message = { role: 'user', content: question };
+    const currentMessages = [...messages, newUserMessage];
+
+    console.log(currentMessages)
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ question: question }),
+        body: JSON.stringify({ messages: currentMessages }),
       });
 
       if (!res.ok) {
@@ -32,7 +66,17 @@ export default function Home() {
       }
 
       const data = await res.json();
+
+      if (data?.choices?.[0]?.message) {
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.choices[0].message.content
+        };
+        setMessages([...currentMessages, assistantMessage]);
+      }
+
       setResponse(JSON.stringify(data, null, 2));
+      setQuestion('');
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : '不明なエラーが発生しました');
@@ -44,6 +88,15 @@ export default function Home() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleChat();
+  };
+
+  const clearHistory = () => {
+    setMessages([
+      { role: 'system', content: 'You are a helpful assistant.' }
+    ]);
+    localStorage.removeItem('chatHistory');
+    setResponse('');
+    setError('');
   };
 
   const getMessageContent = (response: any) => {
@@ -59,7 +112,15 @@ export default function Home() {
 
   return (
     <main className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">LangChain Chat Demo</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">LangChain Chat Demo</h1>
+        <button
+          onClick={clearHistory}
+          className="px-4 py-2 text-sm text-red-600 border border-red-600 rounded hover:bg-red-50"
+        >
+          履歴をクリア
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -114,37 +175,38 @@ export default function Home() {
         </div>
       )}
 
-      {response && (
-        <div className="space-y-4 mt-8">
-          <div className="p-6 bg-gray-50 rounded-lg">
-            <h2 className="text-lg font-semibold mb-2">質問</h2>
-            <p className="text-gray-700">{question}</p>
-          </div>
-
-          {/* マークダウン形式での回答表示 */}
-          <div className="p-6 bg-white rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold mb-4">回答</h2>
+      {/* 会話履歴の表示 */}
+      <div className="space-y-4 mt-8">
+        {messages.slice(1).map((message, index) => (
+          <div
+            key={index}
+            className={`p-4 rounded-lg ${message.role === 'user'
+              ? 'bg-blue-50'
+              : 'bg-gray-50'
+              }`}
+          >
+            <div className="font-semibold mb-2">
+              {message.role === 'user' ? '質問' : '回答'}
+            </div>
             <div className="prose max-w-none">
-              <ReactMarkdown>
-                {getMessageContent(JSON.parse(response)) || '応答の解析に失敗しました。'}
-              </ReactMarkdown>
+              <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* JSON形式での詳細表示 */}
-          <div>
-            <h2 className="text-lg font-semibold mb-2">詳細なレスポンス</h2>
-            <pre className="p-4 bg-gray-100 rounded overflow-x-auto text-sm">
-              {response}
-            </pre>
-          </div>
+      {response && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-2">詳細なレスポンス</h2>
+          <pre className="p-4 bg-gray-100 rounded overflow-x-auto text-sm">
+            {response}
+          </pre>
         </div>
       )}
     </main>
   );
 }
 
-// ローディングスピナーコンポーネント
 function LoadingSpinner() {
   return (
     <svg
