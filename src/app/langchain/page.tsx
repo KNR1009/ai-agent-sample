@@ -32,8 +32,21 @@ export default function LangChainDemo() {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
 
-      const data = await res.json();
-      setResponse(data.response);
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error('レスポンスの読み取りに失敗しました');
+      }
+
+      let accumulatedResponse = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 新しいチャンクをデコードして追加
+        const chunk = new TextDecoder().decode(value);
+        accumulatedResponse += chunk;
+        setResponse(accumulatedResponse);
+      }
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : '不明なエラーが発生しました');
