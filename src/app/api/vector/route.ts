@@ -5,6 +5,8 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { CharacterTextSplitter } from "langchain/text_splitter";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import path from 'path';
 
 export async function POST(request: Request) {
@@ -24,9 +26,38 @@ export async function POST(request: Request) {
     });
 
     const splitDocs = await textSplitter.splitDocuments([doc]);
-    const contextText = splitDocs.map(doc => doc.pageContent).join('\n\n');
 
-    // 3. ChatOpenAIの設定
+    // 3. Embeddingsの作成とベクトルストアの構築
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    // ベクトル化の例を表示
+    const sampleEmbedding = await embeddings.embedQuery(userQuestion);
+    console.log("=== ユーザー質問のembedding ===");
+    console.log("次元数:", sampleEmbedding.length);
+    console.log("ベクトル値（最初の5次元）:", sampleEmbedding.slice(0, 5));
+
+    const vectorStore = await MemoryVectorStore.fromDocuments(
+      splitDocs,
+      embeddings
+    );
+
+    // 各チャンクのembeddingを表示
+    console.log("\n=== 各チャンクのembedding ===");
+    for (let i = 0; i < splitDocs.length; i++) {
+      const docEmbedding = await embeddings.embedQuery(splitDocs[i].pageContent);
+      console.log(`チャンク ${i + 1}:`);
+      console.log("次元数:", docEmbedding.length);
+      console.log("ベクトル値（最初の5次元）:", docEmbedding.slice(0, 5));
+    }
+
+    // 4. 類似度検索の実行
+    const relevantDocs = await vectorStore.similaritySearch(userQuestion, 2);
+    const contextText = relevantDocs.map(doc => doc.pageContent).join('\n\n');
+
+
+    // 5. ChatOpenAIの設定
     const chat = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
       modelName: "gpt-4o-mini",
@@ -60,7 +91,7 @@ ${contextText}
 
     return NextResponse.json({
       response,
-      relevantChunks: splitDocs.map(doc => doc.pageContent)
+      relevantChunks: relevantDocs.map(doc => doc.pageContent)
     });
   } catch (error: any) {
     console.error("エラー:", error.message);
