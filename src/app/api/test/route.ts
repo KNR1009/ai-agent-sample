@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   try {
     const { messages } = await request.json();
 
+
     const chat = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
       modelName: "gpt-4o-mini",
@@ -37,11 +38,10 @@ export async function POST(request: Request) {
 
     // 応答の生成
     const response = await chain.invoke({});
-
     // タイムスタンプを追加
     const responseData = {
       timestamp: new Date().toISOString(),
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       choices: [{
         message: {
           content: response,

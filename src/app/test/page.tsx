@@ -63,8 +63,8 @@ export default function TestChat() {
           type="submit"
           disabled={isLoading || !input.trim()}
           className={`w-full p-2 rounded-lg text-white ${isLoading || !input.trim()
-              ? 'bg-gray-400'
-              : 'bg-blue-500 hover:bg-blue-600'
+            ? 'bg-gray-400'
+            : 'bg-blue-500 hover:bg-blue-600'
             }`}
         >
           {isLoading ? '送信中...' : '送信'}
