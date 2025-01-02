@@ -5,11 +5,14 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { CharacterTextSplitter } from "langchain/text_splitter";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import path from 'path';
 
 export async function POST(request: Request) {
   try {
     const { messages } = await request.json();
+    const userQuestion = messages[messages.length - 1].content;
 
     // 1. テキストファイルをロード
     const filePath = path.join(process.cwd(), 'public', 'data', 'context.txt');
@@ -23,9 +26,23 @@ export async function POST(request: Request) {
     });
 
     const splitDocs = await textSplitter.splitDocuments([doc]);
-    const contextText = splitDocs.map(doc => doc.pageContent).join('\n\n');
 
-    // 3. ChatOpenAIの設定
+    // 3. Embeddingsの作成とベクトルストアの構築
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const vectorStore = await MemoryVectorStore.fromDocuments(
+      splitDocs,
+      embeddings
+    );
+
+    // 4. 類似度検索の実行
+    const relevantDocs = await vectorStore.similaritySearch(userQuestion, 2);
+    const contextText = relevantDocs.map(doc => doc.pageContent).join('\n\n');
+
+
+    // 5. ChatOpenAIの設定
     const chat = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
       modelName: "gpt-4o-mini",
@@ -46,7 +63,7 @@ ${contextText}
 
     const chatPrompt = ChatPromptTemplate.fromMessages([
       ["system", systemTemplate],
-      ["human", messages[messages.length - 1].content],
+      ["human", userQuestion],
     ]);
 
     const chain = RunnableSequence.from([
@@ -57,7 +74,10 @@ ${contextText}
 
     const response = await chain.invoke({});
 
-    return NextResponse.json({ response });
+    return NextResponse.json({
+      response,
+      relevantChunks: relevantDocs.map(doc => doc.pageContent)
+    });
   } catch (error: any) {
     console.error("エラー:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });

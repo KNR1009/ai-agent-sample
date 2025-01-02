@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 
 type ResponseData = {
   response: string;
+  relevantChunks: string[];
 };
 
 export default function TestChat() {
@@ -41,7 +42,6 @@ export default function TestChat() {
     }
   };
 
-  console.log(response)
 
   return (
     <div className="max-w-3xl mx-auto p-4">
@@ -82,6 +82,17 @@ export default function TestChat() {
             <div className="prose max-w-none">
               <ReactMarkdown>{response.response}</ReactMarkdown>
             </div>
+          </div>
+
+          {/* 関連チャンク */}
+          <div className="p-4 bg-gray-100 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2">参照されたコンテキスト:</h2>
+            {response.relevantChunks.map((chunk, index) => (
+              <div key={index} className="mb-4 p-3 bg-white rounded">
+                <h3 className="font-semibold mb-2">チャンク {index + 1}</h3>
+                <p className="text-sm">{chunk}</p>
+              </div>
+            ))}
           </div>
 
           {/* 生のJSONデータ */}
