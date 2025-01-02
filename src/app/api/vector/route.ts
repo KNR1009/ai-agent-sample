@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     // 2. Text Splitterを使用してチャンクに分割
     const textSplitter = new CharacterTextSplitter({
-      chunkSize: 1000,
+      chunkSize: 500,
       chunkOverlap: 100,
     });
 
