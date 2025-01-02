@@ -3,12 +3,7 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 type ResponseData = {
-  choices: {
-    message: {
-      content: string;
-      role: string;
-    };
-  }[];
+  response: string;
 };
 
 export default function TestChat() {
@@ -45,6 +40,8 @@ export default function TestChat() {
       setIsLoading(false);
     }
   };
+
+  console.log(response)
 
   return (
     <div className="max-w-3xl mx-auto p-4">
@@ -83,7 +80,7 @@ export default function TestChat() {
           <div className="p-4 bg-gray-100 rounded-lg">
             <h2 className="text-lg font-semibold mb-2">フォーマットされた回答:</h2>
             <div className="prose max-w-none">
-              <ReactMarkdown>{response.choices[0].message.content}</ReactMarkdown>
+              <ReactMarkdown>{response.response}</ReactMarkdown>
             </div>
           </div>
 
